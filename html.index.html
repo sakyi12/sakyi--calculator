@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack Calculator | HTML Project</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #e8eef5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .calculator {
+            width: 420px;
+            max-width: 100%;
+            background: #254c7e;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 24px;
+            margin: 10px 0 20px;
+        }
+
+        #display {
+            width: 100%;
+            height: 85px;
+            padding: 15px 10px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 6px;
+            background: #648fbe;
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            text-align: right;
+            outline: none;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        button {
+            height: 65px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            color: black;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background: #dce8f5;
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        .undo {
+            background: #aae1be;
+            font-size: 16px;
+        }
+
+        .redo {
+            background: #ffcd82;
+            font-size: 16px;
+        }
+
+        .clear {
+            background: #ffa0a0;
+        }
+
+        .operator {
+            background: #bed7f5;
+        }
+
+        .history-title {
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 5px;
+        }
+
+        #history {
+            width: 100%;
+            height: 75px;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            resize: none;
+            background: #ebf2fa;
+            color: black;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        #stackInfo {
+            margin-top: 10px;
+            color: #beffc8;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .lifo {
+            color: white;
+            font-size: 13px;
+            font-style: italic;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 450px) {
+            body {
+                padding: 10px;
+            }
+
+            .calculator {
+                width: 100%;
+            }
+
+            button {
+                height: 58px;
+                font-size: 19px;
+            }
+
+            .undo,
+            .redo {
+                font-size: 14px;
+            }
+
+            #display {
+                font-size: 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="calculator">
+
+    <h1>STACK CALCULATOR</h1>
+
+    <input type="text" id="display" value="0" readonly>
+
+    <div class="buttons">
+        <button class="undo" onclick="handleButton('Undo')">Undo</button>
+        <button class="redo" onclick="handleButton('Redo')">Redo</button>
+        <button class="clear" onclick="handleButton('C')">C</button>
+        <button class="operator" onclick="handleButton('÷')">÷</button>
+
+        <button onclick="handleButton('7')">7</button>
+        <button onclick="handleButton('8')">8</button>
+        <button onclick="handleButton('9')">9</button>
+        <button class="operator" onclick="handleButton('×')">×</button>
+
+        <button onclick="handleButton('4')">4</button>
+        <button onclick="handleButton('5')">5</button>
+        <button onclick="handleButton('6')">6</button>
+        <button class="operator" onclick="handleButton('-')">-</button>
+
+        <button onclick="handleButton('1')">1</button>
+        <button onclick="handleButton('2')">2</button>
+        <button onclick="handleButton('3')">3</button>
+        <button class="operator" onclick="handleButton('+')">+</button>
+
+        <button onclick="handleButton('0')">0</button>
+        <button onclick="handleButton('.')">.</button>
+        <button onclick="handleButton('%')">%</button>
+        <button class="operator" onclick="handleButton('=')">=</button>
+    </div>
+
+    <div class="history-title">Calculation History</div>
+
+    <textarea id="history" readonly></textarea>
+
+    <div id="stackInfo">
+        Undo stack: 0 states | Redo stack: 0 states
+    </div>
+
+    <div class="lifo">LIFO: Last In, First Out</div>
+
+</div>
+
+<script>
+    const display = document.getElementById("display");
+    const historyArea = document.getElementById("history");
+    const stackInfo = document.getElementById("stackInfo");
+
+    const undoStack = [];
+    const redoStack = [];
+
+    let storedValue = 0;
+    let pendingOperator = "";
+    let startNewNumber = true;
+
+    // Save the current calculator state.
+    function saveState() {
+        return {
+            displayText: display.value,
+            historyText: historyArea.value,
+            storedValue: storedValue,
+            pendingOperator: pendingOperator,
+            startNewNumber: startNewNumber
+        };
+    }
+
+    // Restore a previous calculator state.
+    function restoreState(state) {
+        display.value = state.displayText;
+        historyArea.value = state.historyText;
+        storedValue = state.storedValue;
+        pendingOperator = state.pendingOperator;
+        startNewNumber = state.startNewNumber;
+
+        updateStackInfo();
+    }
+
+    // Handle all calculator button clicks.
+    function handleButton(key) {
+        if (key === "Undo") {
+            undo();
+            return;
+        }
+
+        if (key === "Redo") {
+            redo();
+            return;
+        }
+
+        undoStack.push(saveState());
+        redoStack.length = 0;
+
+        try {
+            if (/^[0-9]$/.test(key)) {
+                enterDigit(key);
+            } else if (key === ".") {
+                enterDecimal();
+            } else if ("+-×÷".includes(key)) {
+                chooseOperator(key);
+            } else if (key === "=") {
+                calculate();
+            } else if (key === "C") {
+                clearCalculator();
+            } else if (key === "%") {
+                const value = getDisplayValue() / 100;
+                display.value = format(value);
+                startNewNumber = true;
+            }
+        } catch (error) {
+            display.value = "Error";
+            storedValue = 0;
+            pendingOperator = "";
+            startNewNumber = true;
+        }
+
+        updateStackInfo();
+    }
+
+    // Enter a number.
+    function enterDigit(digit) {
+        if (startNewNumber || display.value === "0") {
+            display.value = digit;
+            startNewNumber = false;
+        } else {
+            display.value += digit;
+        }
+    }
+
+    // Enter a decimal point.
+    function enterDecimal() {
+        if (startNewNumber) {
+            display.value = "0.";
+            startNewNumber = false;
+        } else if (!display.value.includes(".")) {
+            display.value += ".";
+        }
+    }
+
+    // Select an arithmetic operator.
+    function chooseOperator(op) {
+        const current = getDisplayValue();
+
+        if (pendingOperator !== "" && !startNewNumber) {
+            storedValue = applyOperation(
+                storedValue,
+                current,
+                pendingOperator
+            );
+
+            display.value = format(storedValue);
+        } else {
+            storedValue = current;
+        }
+
+        pendingOperator = op;
+        startNewNumber = true;
+    }
+
+    // Perform the calculation.
+    function calculate() {
+        if (pendingOperator === "") {
+            return;
+        }
+
+        const secondValue = getDisplayValue();
+        const firstValue = storedValue;
+        const op = pendingOperator;
+
+        const result = applyOperation(
+            firstValue,
+            secondValue,
+            op
+        );
+
+        historyArea.value +=
+            format(firstValue) + " " +
+            op + " " +
+            format(secondValue) + " = " +
+            format(result) + "\n";
+
+        display.value = format(result);
+        storedValue = result;
+        pendingOperator = "";
+        startNewNumber = true;
+
+        historyArea.scrollTop = historyArea.scrollHeight;
+    }
+
+    // Apply the selected mathematical operation.
+    function applyOperation(a, b, op) {
+        switch (op) {
+            case "+":
+                return a + b;
+
+            case "-":
+                return a - b;
+
+            case "×":
+                return a * b;
+
+            case "÷":
+                if (b === 0) {
+                    throw new Error("Cannot divide by zero");
+                }
+
+                return a / b;
+
+            default:
+                return b;
+        }
+    }
+
+    // Clear the calculator and its history.
+    function clearCalculator() {
+        display.value = "0";
+        storedValue = 0;
+        pendingOperator = "";
+        startNewNumber = true;
+        historyArea.value = "";
+    }
+
+    // Get the number currently displayed.
+    function getDisplayValue() {
+        const value = Number(display.value);
+
+        if (!Number.isFinite(value)) {
+            throw new Error("Invalid number");
+        }
+
+        return value;
+    }
+
+    // Format numbers without unnecessary trailing zeros.
+    function format(value) {
+        if (!Number.isFinite(value)) {
+            return "Error";
+        }
+
+        return Number(value.toPrecision(12)).toString();
+    }
+
+    // Undo the last calculator action.
+    function undo() {
+        if (undoStack.length === 0) {
+            return;
+        }
+
+        redoStack.push(saveState());
+
+        const previousState = undoStack.pop();
+
+        restoreState(previousState);
+    }
+
+    // Redo the last undone action.
+    function redo() {
+        if (redoStack.length === 0) {
+            return;
+        }
+
+        undoStack.push(saveState());
+
+        const nextState = redoStack.pop();
+
+        restoreState(nextState);
+    }
+
+    // Display the undo and redo stack sizes.
+    function updateStackInfo() {
+        stackInfo.textContent =
+            "Undo stack: " + undoStack.length +
+            " states | Redo stack: " +
+            redoStack.length + " states";
+    }
+</script>
+
+</body>
+</html>
